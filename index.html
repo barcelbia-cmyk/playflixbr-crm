@@ -302,11 +302,11 @@ body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sa
       <div class="divider" style="margin:12px 0"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-size:11px;color:var(--t2)">Projeção do mês</span>
-        <span style="font-size:13px;font-weight:700;color:var(--amber-t)">R$ 45,00</span>
+        <span style="font-size:13px;font-weight:700;color:var(--amber-t)" id="kpi-projecao">--</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:11px;color:var(--t2)">Próxima fatura</span>
-        <span style="font-size:11px;color:var(--t3)">01/set/2026</span>
+        <span style="font-size:11px;color:var(--t3)" id="kpi-proxima-fatura">--</span>
       </div>
     </div>
 
@@ -594,8 +594,22 @@ async function carregarKPIs(){
     // Alerta de orçamento mensal
     const custoMesUsd = parseFloat(stats.custo_mes_usd || 0);
     const orcamento = parseFloat(stats.orcamento_mensal || 0);
+    const custoMesBrl = custoMesUsd * COTACAO_USD_BRL;
+
+    // Projeção do mês: gasto médio por dia até agora × dias do mês
+    const hoje = new Date();
+    const diaDoMes = hoje.getDate();
+    const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+    const mediaDiaria = custoMesBrl / diaDoMes;
+    const projecaoMes = mediaDiaria * diasNoMes;
+    document.getElementById('kpi-projecao').textContent = 'R$ ' + projecaoMes.toFixed(2);
+
+    // Próxima fatura: dia 1 do mês seguinte
+    const proximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+    document.getElementById('kpi-proxima-fatura').textContent =
+      proximoMes.toLocaleDateString('pt-BR', {day:'2-digit', month:'short', year:'numeric'});
+
     if(orcamento > 0){
-      const custoMesBrl = custoMesUsd * COTACAO_USD_BRL;
       const pctOrcamento = (custoMesBrl / orcamento) * 100;
       const budgetAlert = document.getElementById('budget-alert');
       const budgetAlertInner = document.getElementById('budget-alert-inner');
