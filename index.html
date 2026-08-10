@@ -221,8 +221,8 @@ body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sa
     </div>
     <div class="kpi blue">
       <div class="kpi-label">Resolvidos pelo bot</div>
-      <div class="kpi-value blue">89%</div>
-      <div class="kpi-sub">46 de 52 sem intervenção</div>
+      <div class="kpi-value blue" id="kpi-resolvido">--</div>
+      <div class="kpi-sub" id="kpi-resolvido-sub"></div>
     </div>
     <div class="kpi amber">
       <div class="kpi-label">Precisam de atenção</div>
@@ -231,8 +231,8 @@ body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sa
     </div>
     <div class="kpi purple">
       <div class="kpi-label">Custo IA hoje</div>
-      <div class="kpi-value" style="color:var(--purple-t)">R$ 1,82</div>
-      <div class="kpi-sub">projeção mês: R$ 45</div>
+      <div class="kpi-value" style="color:var(--purple-t)" id="kpi-custo">--</div>
+      <div class="kpi-sub">*cotação aproximada</div>
     </div>
   </div>
 
@@ -610,6 +610,34 @@ function toggleMaintenance(el){
   }
 }
 
+// Busca os KPIs reais e atualiza os cards do topo
+const COTACAO_USD_BRL = 5.40; // aproximada, ajustar se quiser mais precisão
+
+async function carregarKPIs(){
+  try {
+    const resp = await fetch(PROXY_BASE + '/webhook/dashboard-stats');
+    const data = await resp.json();
+    const stats = data[0] || {};
+
+    const atendimentos = parseInt(stats.atendimentos_hoje || 0);
+    const escalados = parseInt(stats.escalados_hoje || 0);
+    const precisaAtencao = parseInt(stats.precisam_atencao || 0);
+    const custoUsd = parseFloat(stats.custo_hoje_usd || 0);
+    const custoBrl = custoUsd * COTACAO_USD_BRL;
+
+    document.getElementById('kpi-total').textContent = atendimentos;
+    document.getElementById('kpi-att').textContent = precisaAtencao;
+    document.getElementById('kpi-custo').textContent = 'R$ ' + custoBrl.toFixed(2);
+
+    const pctResolvido = atendimentos > 0 ? Math.round((1 - escalados / atendimentos) * 100) : 100;
+    document.getElementById('kpi-resolvido').textContent = pctResolvido + '%';
+    document.getElementById('kpi-resolvido-sub').textContent =
+      (atendimentos - escalados) + ' de ' + atendimentos + ' sem intervenção';
+  } catch(err){
+    console.error('Erro ao carregar KPIs:', err);
+  }
+}
+
 // ============ CONEXÃO COM O BACKEND (n8n via Cloudflare Worker) ============
 const PROXY_BASE = 'https://odd-tree-358c.barcelbia.workers.dev/proxy';
 let casoAtualId = null; // guarda qual caso está aberto no painel de orientação
@@ -802,11 +830,13 @@ buildProbList();
 buildCostBars();
 checkInstability();
 carregarCasos();
+carregarKPIs();
 
 // Atualizar gráfico de hora a cada minuto
 setInterval(buildHourChart, 60000);
-// Atualizar casos pendentes a cada 20 segundos
+// Atualizar casos pendentes e KPIs a cada 20 segundos
 setInterval(carregarCasos, 20000);
+setInterval(carregarKPIs, 20000);
 </script>
 </body>
 </html>
