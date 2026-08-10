@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlayFlixBR — Central de Controle</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+[data-theme="dark"]{
+  --bg:#0a0a0a;--s1:#111;--s2:#181818;--s3:#1f1f1f;--s4:#252525;
+  --b:#252525;--b2:#2f2f2f;--b3:#3a3a3a;
+  --t:#f0f0f0;--t2:#888;--t3:#444;
+  --shadow:rgba(0,0,0,.6)
+}
+[data-theme="light"]{
+  --bg:#f0f0f2;--s1:#fff;--s2:#f7f7f8;--s3:#eeeeef;--s4:#e4e4e6;
+  --b:#e0e0e2;--b2:#d0d0d2;--b3:#c0c0c2;
+  --t:#111;--t2:#666;--t3:#aaa;
+  --shadow:rgba(0,0,0,.1)
+}
+:root{
+  --red:#e50914;--red-bg:rgba(229,9,20,.1);--red-t:#f87171;
+  --green:#1D9E75;--green-bg:rgba(29,158,117,.1);--green-t:#34d399;
+  --amber:#f0c940;--amber-bg:rgba(240,201,64,.1);--amber-t:#fbbf24;
+  --blue:#3b82f6;--blue-bg:rgba(59,130,246,.1);--blue-t:#60a5fa;
+  --purple:#8b5cf6;--purple-bg:rgba(139,92,246,.1);--purple-t:#a78bfa;
+}
+body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sans-serif;min-height:100vh;font-size:13px}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--b);padding:0 24px;height:52px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+.logo{font-size:16px;font-weight:900;letter-spacing:-.5px}
+.logo span{color:var(--red)}
+.tb-divider{width:1px;height:20px;background:var(--b2)}
+.tb-title{font-size:12px;color:var(--t2)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+/* STATUS INDICATORS */
+.status-indicator{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;border:1px solid var(--b2);background:var(--s2);font-size:11px;color:var(--t2);cursor:default}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green);box-shadow:0 0 6px rgba(29,158,117,.5)}
+.dot-red{background:var(--red);animation:blink 1s infinite}
+.dot-amber{background:var(--amber)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--b);background:var(--s2);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s}
+.icon-btn:hover{background:var(--s3);color:var(--t)}
+.time-display{font-size:12px;color:var(--t2);font-variant-numeric:tabular-nums}
+
+/* LAYOUT */
+.page{max-width:1400px;margin:0 auto;padding:20px 24px}
+
+/* ALERT BANNER */
+.alert-banner{background:rgba(240,201,64,.08);border:1px solid rgba(240,201,64,.2);border-radius:10px;padding:12px 16px;margin-bottom:20px;display:none;align-items:center;gap:10px;font-size:12px;color:var(--amber-t)}
+.alert-banner.show{display:flex}
+.alert-banner .close{margin-left:auto;cursor:pointer;opacity:.6;font-size:14px}
+.alert-banner .close:hover{opacity:1}
+
+/* GRID SYSTEM */
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:18px}
+.grid-1-2{display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:18px}
+.grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:18px}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--b);border-radius:12px;padding:16px}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);font-weight:600;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.card-title span{font-size:10px;color:var(--t3);text-transform:none;letter-spacing:0;font-weight:400}
+
+/* KPI CARDS */
+.kpi{background:var(--s1);border:1px solid var(--b);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.green::after{background:var(--green)}
+.kpi.red::after{background:var(--red)}
+.kpi.amber::after{background:var(--amber)}
+.kpi.blue::after{background:var(--blue)}
+.kpi.purple::after{background:var(--purple)}
+.kpi-label{font-size:11px;color:var(--t2)}
+.kpi-value{font-size:28px;font-weight:800;line-height:1;color:var(--t)}
+.kpi-value.green{color:var(--green-t)}
+.kpi-value.red{color:var(--red-t)}
+.kpi-value.amber{color:var(--amber-t)}
+.kpi-value.blue{color:var(--blue-t)}
+.kpi-sub{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px}
+.kpi-sub.up{color:var(--green-t)}
+.kpi-sub.down{color:var(--red-t)}
+
+/* CHARTS */
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:64px}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar{width:100%;border-radius:3px 3px 0 0;min-height:3px;transition:height .3s}
+.bar-lbl{font-size:9px;color:var(--t3)}
+.bar-val{font-size:9px;color:var(--t2)}
+
+/* ACTIVITY FEED */
+.feed{display:flex;flex-direction:column;gap:1px}
+.feed-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;transition:background .1s;cursor:default}
+.feed-item:hover{background:var(--s2)}
+.feed-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.fi-green{background:var(--green-bg)}
+.fi-red{background:var(--red-bg)}
+.fi-amber{background:var(--amber-bg)}
+.fi-blue{background:var(--blue-bg)}
+.fi-purple{background:var(--purple-bg)}
+.feed-body{flex:1;min-width:0}
+.feed-name{font-size:12px;font-weight:600;color:var(--t);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-desc{font-size:11px;color:var(--t2);line-height:1.4}
+.feed-time{font-size:10px;color:var(--t3);flex-shrink:0;margin-top:2px}
+
+/* ATTENTION CARDS */
+.attention-item{background:var(--s2);border:1px solid var(--b);border-radius:9px;padding:12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+.attention-item:last-child{margin-bottom:0}
+.att-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.att-urg{background:var(--red-bg);color:var(--red-t);border:1px solid rgba(248,113,113,.2)}
+.att-wait{background:var(--amber-bg);color:var(--amber-t);border:1px solid rgba(251,191,36,.2)}
+.att-body{flex:1;min-width:0}
+.att-name{font-size:12px;font-weight:600;color:var(--t);margin-bottom:2px}
+.att-desc{font-size:11px;color:var(--t2);margin-bottom:6px;line-height:1.4}
+.att-actions{display:flex;gap:6px}
+.att-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--b2);background:var(--s3);color:var(--t2);cursor:pointer;transition:all .15s}
+.att-btn:hover{background:var(--s4);color:var(--t)}
+.att-btn.primary{background:var(--red-bg);border-color:rgba(248,113,113,.3);color:var(--red-t)}
+
+/* COST BARS */
+.cost-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cost-bar-label{font-size:11px;color:var(--t2);width:28px;text-align:right;flex-shrink:0}
+.cost-bar-wrap{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.cost-bar-fill{height:100%;border-radius:3px;background:var(--red);opacity:.7;transition:width .3s}
+.cost-bar-fill.today{background:var(--green);opacity:1}
+.cost-bar-val{font-size:11px;color:var(--t);width:44px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+
+/* BOT STATUS */
+.bot-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bs-item{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px}
+.bs-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.bs-info{flex:1;min-width:0}
+.bs-name{font-size:11px;font-weight:600;color:var(--t)}
+.bs-detail{font-size:10px;color:var(--t3);margin-top:1px}
+
+/* PROGRESS RING */
+.ring-wrap{display:flex;align-items:center;justify-content:center;position:relative;width:80px;height:80px;flex-shrink:0}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-val{position:absolute;text-align:center}
+.ring-num{font-size:18px;font-weight:800;line-height:1}
+.ring-lbl{font-size:9px;color:var(--t3)}
+
+/* QUICK ACTIONS */
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qa-card{background:var(--s2);border:1px solid var(--b);border-radius:9px;padding:12px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px}
+.qa-card:hover{background:var(--s3);border-color:var(--b2)}
+.qa-card.danger:hover{background:var(--red-bg);border-color:rgba(248,113,113,.3)}
+.qa-card.danger:hover .qa-card-label{color:var(--red-t)}
+.qa-icon{font-size:20px;flex-shrink:0}
+.qa-card-label{font-size:12px;font-weight:600;color:var(--t);margin-bottom:2px}
+.qa-card-desc{font-size:10px;color:var(--t3)}
+
+/* TOGGLE */
+.big-toggle{display:flex;align-items:center;gap:10px;padding:12px;background:var(--s2);border:1px solid var(--b);border-radius:9px;cursor:pointer;margin-bottom:8px}
+.tog{width:40px;height:22px;border-radius:11px;background:var(--b2);position:relative;flex-shrink:0;transition:background .2s}
+.tog.on{background:var(--green)}
+.tog-d{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left .2s}
+.tog.on .tog-d{left:21px}
+.tog-info{flex:1}
+.tog-label{font-size:12px;font-weight:600;color:var(--t)}
+.tog-sub{font-size:10px;color:var(--t3);margin-top:1px}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:11px 16px;font-size:12px;color:var(--t);display:none;box-shadow:0 4px 20px var(--shadow);z-index:200;max-width:280px}
+.toast.show{display:block}
+
+/* SECTION HEADER */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.section-title{font-size:13px;font-weight:600;color:var(--t)}
+.section-sub{font-size:11px;color:var(--t3)}
+.section-link{font-size:11px;color:var(--t2);cursor:pointer;text-decoration:underline}
+.section-link:hover{color:var(--t)}
+
+.divider{height:1px;background:var(--b);margin:6px 0}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">Play<span>FlixBR</span></div>
+  <div class="tb-divider"></div>
+  <span class="tb-title">Central de Controle</span>
+  <div class="tb-right">
+    <div class="status-indicator" id="srv-status">
+      <div class="status-dot dot-green" id="srv-dot"></div>
+      <span id="srv-txt">MegaGoFlix OK</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot dot-green"></div>
+      <span>Bot ativo</span>
+    </div>
+    <div class="status-indicator">
+      <div class="status-dot dot-green"></div>
+      <span>WhatsApp</span>
+    </div>
+    <div class="time-display" id="clock">--:--:--</div>
+    <button class="icon-btn" onclick="toggleTheme()" title="Tema">🌓</button>
+    <button class="icon-btn" onclick="toggleConfig()" title="Configurações" id="btn-config">⚙️</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ALERT -->
+  <div class="alert-banner" id="alert">
+    ⚠️ <span id="alert-txt">Possível instabilidade — 4 clientes com problema de conexão nos últimos 30 min.</span>
+    <span class="close" onclick="document.getElementById('alert').classList.remove('show')">✕</span>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid-4" style="margin-bottom:18px">
+    <div class="kpi green">
+      <div class="kpi-label">Atendimentos hoje</div>
+      <div class="kpi-value green" id="kpi-total">52</div>
+      <div class="kpi-sub up">↑ +8% vs ontem</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">Resolvidos pelo bot</div>
+      <div class="kpi-value blue">89%</div>
+      <div class="kpi-sub">46 de 52 sem intervenção</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">Precisam de atenção</div>
+      <div class="kpi-value amber" id="kpi-att">3</div>
+      <div class="kpi-sub down">↑ 2 urgentes</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">Custo IA hoje</div>
+      <div class="kpi-value" style="color:var(--purple-t)">R$ 1,82</div>
+      <div class="kpi-sub">projeção mês: R$ 45</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Atenção + Atividade recente -->
+  <div class="grid-2-1">
+
+    <!-- CASOS QUE PRECISAM DE ATENÇÃO -->
+    <div class="card">
+      <div class="card-title">
+        🚨 Casos que precisam de você
+        <span id="att-count">3 casos</span>
+      </div>
+
+      <div class="attention-item">
+        <span class="att-badge att-urg">🚨 urgente</span>
+        <div class="att-body">
+          <div class="att-name">Marcos Alves · +55 41 9 9999-0001</div>
+          <div class="att-desc">Cliente ameaçou estorno. Bot não conseguiu resolver problema de conexão na Samsung após 2 tentativas.</div>
+          <div class="att-actions">
+            <button class="att-btn primary" onclick="showToast('📱 Abrindo conversa no WhatsApp...')">💬 Responder</button>
+            <button class="att-btn" onclick="showToast('✅ Caso resolvido!')">✓ Resolver</button>
+            <button class="att-btn" onclick="showToast('🎁 7 dias adicionados!')">🎁 Cortesia</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="attention-item">
+        <span class="att-badge att-urg">🚨 urgente</span>
+        <div class="att-body">
+          <div class="att-name">Roberto Costa · +55 11 9 8888-1122</div>
+          <div class="att-desc">App não abre na Samsung. Bot pediu reinstalação mas cliente não conseguiu.</div>
+          <div class="att-actions">
+            <button class="att-btn primary" onclick="showToast('📱 Abrindo conversa...')">💬 Responder</button>
+            <button class="att-btn" onclick="showToast('✅ Caso resolvido!')">✓ Resolver</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="attention-item">
+        <span class="att-badge att-wait">⏳ dúvida da IA</span>
+        <div class="att-body">
+          <div class="att-name">Juliana Santos · +55 21 9 7777-3344</div>
+          <div class="att-desc">IA pergunta: "Cliente diz que aparece erro 403 no GSE. Como devo orientar?"</div>
+          <div class="att-actions">
+            <button class="att-btn primary" onclick="orientarIA()">🤖 Orientar IA</button>
+            <button class="att-btn" onclick="showToast('✅ Resolvido!')">✓ Resolver</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="no-attention" style="display:none;text-align:center;padding:20px;color:var(--t3);font-size:12px">
+        ✅ Nenhum caso pendente — bot está resolvendo tudo!
+      </div>
+    </div>
+
+    <!-- ATIVIDADE RECENTE -->
+    <div class="card">
+      <div class="card-title">Atividade recente</div>
+      <div class="feed">
+        <div class="feed-item">
+          <div class="feed-icon fi-green">✅</div>
+          <div class="feed-body">
+            <div class="feed-name">Patrícia Ferreira</div>
+            <div class="feed-desc">Instalação LG resolvida pelo bot</div>
+          </div>
+          <div class="feed-time">2min</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-icon fi-red">🚨</div>
+          <div class="feed-body">
+            <div class="feed-name">Marcos Alves</div>
+            <div class="feed-desc">Ameaçou estorno — escalado</div>
+          </div>
+          <div class="feed-time">5min</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-icon fi-green">✅</div>
+          <div class="feed-body">
+            <div class="feed-name">Larissa Oliveira</div>
+            <div class="feed-desc">Renovação 3 meses concluída</div>
+          </div>
+          <div class="feed-time">12min</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-icon fi-amber">🤖</div>
+          <div class="feed-body">
+            <div class="feed-name">Juliana Santos</div>
+            <div class="feed-desc">IA pediu orientação — erro 403</div>
+          </div>
+          <div class="feed-time">18min</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-icon fi-green">✅</div>
+          <div class="feed-body">
+            <div class="feed-name">Diego Martins</div>
+            <div class="feed-desc">Dúvida sobre múltiplas telas resolvida</div>
+          </div>
+          <div class="feed-time">25min</div>
+        </div>
+        <div class="feed-item">
+          <div class="feed-icon fi-blue">💳</div>
+          <div class="feed-body">
+            <div class="feed-name">Tiago Nascimento</div>
+            <div class="feed-desc">Renovação mensal realizada</div>
+          </div>
+          <div class="feed-time">31min</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 2: Gráficos -->
+  <div class="grid-2" style="margin-bottom:18px">
+
+    <!-- VOLUME POR HORA -->
+    <div class="card">
+      <div class="card-title">Volume de atendimentos — hoje por hora</div>
+      <div class="bar-chart" id="hour-chart"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <span class="bar-lbl">00h</span>
+        <span class="bar-lbl">06h</span>
+        <span class="bar-lbl">12h</span>
+        <span class="bar-lbl">18h</span>
+        <span class="bar-lbl">23h</span>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--t3)">Pico hoje: <span style="color:var(--amber-t);font-weight:600">20h–22h</span></div>
+    </div>
+
+    <!-- PROBLEMAS MAIS FREQUENTES -->
+    <div class="card">
+      <div class="card-title">Problemas mais frequentes — hoje</div>
+      <div id="prob-list"></div>
+    </div>
+
+  </div>
+
+  <!-- ROW 3: Custos + Taxa de resolução + Status + Ações -->
+  <div class="grid-4" style="margin-bottom:18px">
+
+    <!-- CUSTOS IA -->
+    <div class="card">
+      <div class="card-title">💰 Custos Claude API</div>
+      <div id="cost-bars"></div>
+      <div class="divider" style="margin:12px 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:11px;color:var(--t2)">Projeção do mês</span>
+        <span style="font-size:13px;font-weight:700;color:var(--amber-t)">R$ 45,00</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--t2)">Próxima fatura</span>
+        <span style="font-size:11px;color:var(--t3)">01/set/2026</span>
+      </div>
+    </div>
+
+    <!-- TAXA DE RESOLUÇÃO -->
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+      <div class="card-title" style="width:100%;margin-bottom:0">Taxa de resolução</div>
+      <div class="ring-wrap">
+        <svg width="80" height="80" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="32" fill="none" stroke="var(--s3)" stroke-width="8"/>
+          <circle cx="40" cy="40" r="32" fill="none" stroke="var(--green)" stroke-width="8" stroke-dasharray="201" stroke-dashoffset="22" stroke-linecap="round"/>
+        </svg>
+        <div class="ring-val">
+          <div class="ring-num" style="color:var(--green-t)">89%</div>
+          <div class="ring-lbl">pelo bot</div>
+        </div>
+      </div>
+      <div style="width:100%;font-size:11px;color:var(--t3);text-align:center">46 resolvidos · 6 intervenção</div>
+    </div>
+
+    <!-- STATUS DO SISTEMA -->
+    <div class="card">
+      <div class="card-title">Status do sistema</div>
+      <div class="bot-status-grid">
+        <div class="bs-item">
+          <div class="bs-dot dot-green"></div>
+          <div class="bs-info">
+            <div class="bs-name">Bot WhatsApp</div>
+            <div class="bs-detail">ativo · 52 msgs hoje</div>
+          </div>
+        </div>
+        <div class="bs-item">
+          <div class="bs-dot dot-green"></div>
+          <div class="bs-info">
+            <div class="bs-name">MegaGoFlix</div>
+            <div class="bs-detail">online · sem erros</div>
+          </div>
+        </div>
+        <div class="bs-item">
+          <div class="bs-dot dot-green"></div>
+          <div class="bs-info">
+            <div class="bs-name">Evolution API</div>
+            <div class="bs-detail">conectado</div>
+          </div>
+        </div>
+        <div class="bs-item">
+          <div class="bs-dot dot-green"></div>
+          <div class="bs-info">
+            <div class="bs-name">n8n</div>
+            <div class="bs-detail">rodando · GCP</div>
+          </div>
+        </div>
+        <div class="bs-item">
+          <div class="bs-dot dot-green"></div>
+          <div class="bs-info">
+            <div class="bs-name">Claude API</div>
+            <div class="bs-detail">47 chamadas hoje</div>
+          </div>
+        </div>
+        <div class="bs-item">
+          <div class="bs-dot dot-amber"></div>
+          <div class="bs-info">
+            <div class="bs-name">Keep-alive</div>
+            <div class="bs-detail">último ping 8min</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AÇÕES RÁPIDAS -->
+    <div class="card">
+      <div class="card-title">Ações rápidas</div>
+
+      <div class="big-toggle" onclick="toggleMaintenance(this)">
+        <div class="tog" id="maint-tog"><div class="tog-d"></div></div>
+        <div class="tog-info">
+          <div class="tog-label">Modo manutenção</div>
+          <div class="tog-sub" id="maint-sub">Desativado — bot respondendo normalmente</div>
+        </div>
+      </div>
+
+      <div class="qa-grid">
+        <div class="qa-card" onclick="showToast('📊 Abrindo painel MegaGoFlix...')">
+          <div class="qa-icon">📊</div>
+          <div>
+            <div class="qa-card-label">Painel</div>
+            <div class="qa-card-desc">MegaGoFlix</div>
+          </div>
+        </div>
+        <div class="qa-card" onclick="showToast('📧 Kirvano aberto...')">
+          <div class="qa-icon">🛒</div>
+          <div>
+            <div class="qa-card-label">Vendas</div>
+            <div class="qa-card-desc">Kirvano</div>
+          </div>
+        </div>
+        <div class="qa-card" onclick="showToast('⚙️ n8n aberto...')">
+          <div class="qa-icon">⚙️</div>
+          <div>
+            <div class="qa-card-label">Automação</div>
+            <div class="qa-card-desc">n8n</div>
+          </div>
+        </div>
+        <div class="qa-card danger" onclick="showToast('💳 Anthropic aberto...')">
+          <div class="qa-icon">💰</div>
+          <div>
+            <div class="qa-card-label">Fatura IA</div>
+            <div class="qa-card-desc">Anthropic</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 4: Orientar IA (modal inline) -->
+  <div id="orientar-panel" style="display:none;margin-bottom:18px">
+    <div class="card" style="border-color:rgba(240,201,64,.3);background:rgba(240,201,64,.04)">
+      <div class="card-title" style="color:var(--amber-t)">🤖 Orientar a IA — Juliana Santos</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">
+        <strong style="color:var(--t)">Situação:</strong> Cliente com erro 403 no GSE Smart IPTV (iPhone). Bot não encontrou solução na base de dados.<br>
+        <strong style="color:var(--t)">Pergunta da IA:</strong> "Como devo orientar o cliente sobre o erro 403?"
+      </div>
+      <div style="display:flex;gap:8px">
+        <textarea id="ia-response" placeholder="Digite sua orientação para a IA continuar o atendimento..." style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:10px;color:var(--t);font-size:12px;font-family:inherit;resize:none;height:72px;outline:none"></textarea>
+        <button onclick="enviarOrientacao()" style="background:var(--amber-bg);border:1px solid rgba(240,201,64,.3);border-radius:8px;padding:0 16px;color:var(--amber-t);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Enviar para IA</button>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--t3)">💡 Sugestão: "Erro 403 geralmente é problema de servidor. Peça para trocar para http://goflix.online"</div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- PAINEL DE CONFIGURAÇÃO -->
+<div id="config-panel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--s1);border:1px solid var(--b2);border-radius:16px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:15px;font-weight:700">⚙️ Configuração do sistema</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">Atualize aqui quando mudar de painel, servidor ou apps</div>
+      </div>
+      <button onclick="closeConfig()" style="background:var(--s3);border:1px solid var(--b2);border-radius:8px;padding:6px 12px;color:var(--t2);cursor:pointer;font-size:12px">✕ Fechar</button>
+    </div>
+    <div style="padding:24px">
+
+      <!-- SERVIDORES -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);font-weight:600;margin-bottom:10px">🌐 Servidores</div>
+        <div style="display:grid;gap:8px">
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Servidor principal</label>
+            <input id="cfg-srv1" value="http://glove1.sbs" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;font-family:monospace;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Servidor backup</label>
+            <input id="cfg-srv2" value="http://goflix.online" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;font-family:monospace;outline:none">
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINEL -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);font-weight:600;margin-bottom:10px">📊 Painel IPTV</div>
+        <div style="display:grid;gap:8px">
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">URL do painel</label>
+            <input id="cfg-painel" value="https://pmega.site" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;font-family:monospace;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Nome do painel</label>
+            <input id="cfg-nome-painel" value="MegaGoFlix" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
+        </div>
+      </div>
+
+      <!-- APPS E CÓDIGOS -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);font-weight:600;margin-bottom:10px">📱 Apps e códigos</div>
+        <div style="display:grid;gap:8px">
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Código fixo (apps parceiros principais)</label>
+            <input id="cfg-codigo" value="408634" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;font-family:monospace;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps Samsung (separados por vírgula)</label>
+            <input id="cfg-samsung" value="Assist+, Fast Player, HD Player, Vizzion Play, Epic Play" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps LG (separados por vírgula)</label>
+            <input id="cfg-lg" value="Assist+, PlaySIM, Box Player, Fast Player, HD Player, Vizzion Play, Epic Play" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps Android celular (separados por vírgula)</label>
+            <input id="cfg-android" value="PlaySIM, Magic Player, ZINK, Player OTT, VUPRO" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps iPhone (separados por vírgula)</label>
+            <input id="cfg-iphone" value="GSE Smart IPTV, Smarters Player Lite, IPTV Ultra" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps Fire Stick via Downloader (nome:código)</label>
+            <input id="cfg-firestick" value="MegaFlix V7:3764377, Uni Tv:9387398, Fusion Ibo 4K:7207536, GS Tv:7532402" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
+        </div>
+      </div>
+
+      <!-- ÚLTIMA ATUALIZAÇÃO -->
+      <div style="background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--t3)">
+        Última atualização: <span id="cfg-updated" style="color:var(--t2)">09/08/2026 às 10:30</span>
+      </div>
+
+      <!-- BOTÃO SALVAR -->
+      <button onclick="salvarConfig()" style="width:100%;background:var(--green);border:none;border-radius:9px;padding:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+        💾 Salvar configuração
+      </button>
+      <div style="font-size:11px;color:var(--t3);text-align:center;margin-top:8px">
+        A IA passa a usar essas informações imediatamente na próxima conversa
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// RELÓGIO
+function updateClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// TEMA
+function toggleTheme(){
+  const h = document.documentElement;
+  h.dataset.theme = h.dataset.theme === 'dark' ? 'light' : 'dark';
+}
+
+// TOAST
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// MODO MANUTENÇÃO
+function toggleMaintenance(el){
+  const tog = document.getElementById('maint-tog');
+  const sub = document.getElementById('maint-sub');
+  tog.classList.toggle('on');
+  if(tog.classList.contains('on')){
+    sub.textContent = 'Ativado — bot respondendo com mensagem de manutenção';
+    sub.style.color = 'var(--amber-t)';
+    showToast('⚙️ Modo manutenção ativado!');
+  } else {
+    sub.textContent = 'Desativado — bot respondendo normalmente';
+    sub.style.color = 'var(--t3)';
+    showToast('✅ Bot voltou ao normal!');
+  }
+}
+
+// ORIENTAR IA
+function orientarIA(){
+  const panel = document.getElementById('orientar-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if(panel.style.display === 'block') panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function enviarOrientacao(){
+  const resp = document.getElementById('ia-response').value.trim();
+  if(!resp) return;
+  showToast('✅ Orientação enviada! IA vai continuar o atendimento.');
+  document.getElementById('orientar-panel').style.display = 'none';
+  document.getElementById('ia-response').value = '';
+}
+
+// GRÁFICO DE HORAS
+function buildHourChart(){
+  const data = [0,0,0,0,0,1,2,4,6,8,11,9,7,8,10,9,8,12,15,18,0,0,0,0];
+  const max = Math.max(...data);
+  const chart = document.getElementById('hour-chart');
+  const now = new Date().getHours();
+  chart.innerHTML = data.map((v,i) => {
+    const isNow = i === now;
+    const color = isNow ? 'var(--red)' : 'var(--blue)';
+    const opacity = isNow ? '1' : '0.4';
+    return `<div class="bar-wrap"><div class="bar" style="height:${Math.max(2,Math.round((v/max)*56))}px;background:${color};opacity:${opacity}"></div></div>`;
+  }).join('');
+}
+
+// PROBLEMAS FREQUENTES
+function buildProbList(){
+  const probs = [
+    {label:'App não conecta', n:18, pct:75},
+    {label:'Não recebeu acesso', n:12, pct:50},
+    {label:'Dúvida instalação', n:10, pct:42},
+    {label:'Renovação de plano', n:7, pct:29},
+    {label:'Pedido de estorno', n:2, pct:8},
+  ];
+  document.getElementById('prob-list').innerHTML = probs.map(p => `
+    <div class="cost-bar-row">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:4px">${p.label}</div>
+        <div class="cost-bar-wrap"><div class="cost-bar-fill" style="width:${p.pct}%"></div></div>
+      </div>
+      <div class="cost-bar-val">${p.n}x</div>
+    </div>
+  `).join('');
+}
+
+// CUSTOS
+function buildCostBars(){
+  const days = [
+    {d:'Seg', v:1.45},{d:'Ter', v:2.31},{d:'Qua', v:1.87},
+    {d:'Qui', v:2.14},{d:'Sex', v:1.92},{d:'Sáb', v:2.14},{d:'Dom', v:1.82}
+  ];
+  const max = Math.max(...days.map(d => d.v));
+  document.getElementById('cost-bars').innerHTML = days.map((d,i) => {
+    const isToday = i === days.length - 1;
+    return `<div class="cost-bar-row">
+      <div class="cost-bar-label">${d.d}</div>
+      <div class="cost-bar-wrap"><div class="cost-bar-fill${isToday?' today':''}" style="width:${Math.round((d.v/max)*100)}%"></div></div>
+      <div class="cost-bar-val">R$${d.v.toFixed(2)}</div>
+    </div>`;
+  }).join('');
+}
+
+// STATUS DO SERVIDOR baseado em reclamações
+function checkInstability(){
+  const urgentes = 2;
+  const dot = document.getElementById('srv-dot');
+  const txt = document.getElementById('srv-txt');
+  const alert = document.getElementById('alert');
+  if(urgentes >= 4){
+    dot.className = 'status-dot dot-red';
+    txt.textContent = 'MegaGoFlix — verificar!';
+    alert.classList.add('show');
+  } else if(urgentes >= 2){
+    dot.className = 'status-dot dot-amber';
+    txt.textContent = `MegaGoFlix — ${urgentes} reclamações`;
+  }
+}
+
+
+// CONFIGURAÇÃO
+function toggleConfig(){
+  const p = document.getElementById('config-panel');
+  p.style.display = p.style.display === 'none' || p.style.display === '' ? 'flex' : 'none';
+}
+function closeConfig(){
+  document.getElementById('config-panel').style.display = 'none';
+}
+function salvarConfig(){
+  const now = new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('cfg-updated').textContent = now;
+  // Atualiza status do servidor no topbar
+  const nomePainel = document.getElementById('cfg-nome-painel').value;
+  document.getElementById('srv-txt').textContent = nomePainel + ' OK';
+  closeConfig();
+  showToast('✅ Configuração salva! IA já usa as novas informações.');
+}
+// Fechar ao clicar fora
+document.getElementById('config-panel').addEventListener('click', function(e){
+  if(e.target === this) closeConfig();
+});
+
+// INIT
+buildHourChart();
+buildProbList();
+buildCostBars();
+checkInstability();
+
+// Atualizar gráfico de hora a cada minuto
+setInterval(buildHourChart, 60000);
+</script>
+</body>
+</html>
