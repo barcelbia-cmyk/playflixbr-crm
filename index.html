@@ -753,9 +753,36 @@ async function resolverCaso(id){
 }
 
 // GRÁFICO DE HORAS
-function buildHourChart(){
-  const data = [0,0,0,0,0,1,2,4,6,8,11,9,7,8,10,9,8,12,15,18,0,0,0,0];
-  const max = Math.max(...data);
+// Busca 1x os dados da semana e alimenta os 3 gráficos
+const LABELS_CATEGORIA = {
+  instalacao: 'Instalação',
+  erro_app: 'Erro no app',
+  acesso: 'Acesso / senha',
+  financeiro: 'Financeiro',
+  outro: 'Outro'
+};
+
+async function carregarMensagensSemana(){
+  try {
+    const resp = await fetch(PROXY_BASE + '/webhook/mensagens-semana');
+    const itens = await resp.json();
+    buildHourChart(itens);
+    buildProbList(itens);
+    buildCostBars(itens);
+  } catch(err){
+    console.error('Erro ao carregar mensagens da semana:', err);
+  }
+}
+
+// VOLUME POR HORA (hoje)
+function buildHourChart(itens){
+  const hoje = new Date().toDateString();
+  const data = new Array(24).fill(0);
+  itens.forEach(item => {
+    const d = new Date(item.criado_em);
+    if(d.toDateString() === hoje) data[d.getHours()]++;
+  });
+  const max = Math.max(...data, 1);
   const chart = document.getElementById('hour-chart');
   const now = new Date().getHours();
   chart.innerHTML = data.map((v,i) => {
@@ -766,37 +793,52 @@ function buildHourChart(){
   }).join('');
 }
 
-// PROBLEMAS FREQUENTES
-function buildProbList(){
-  const probs = [
-    {label:'App não conecta', n:18, pct:75},
-    {label:'Não recebeu acesso', n:12, pct:50},
-    {label:'Dúvida instalação', n:10, pct:42},
-    {label:'Renovação de plano', n:7, pct:29},
-    {label:'Pedido de estorno', n:2, pct:8},
-  ];
-  document.getElementById('prob-list').innerHTML = probs.map(p => `
+// PROBLEMAS MAIS FREQUENTES (hoje)
+function buildProbList(itens){
+  const hoje = new Date().toDateString();
+  const contagem = {};
+  itens.forEach(item => {
+    const d = new Date(item.criado_em);
+    if(d.toDateString() !== hoje) return;
+    const cat = item.categoria || 'outro';
+    contagem[cat] = (contagem[cat] || 0) + 1;
+  });
+  const entradas = Object.entries(contagem).sort((a,b) => b[1]-a[1]);
+  const max = entradas.length ? entradas[0][1] : 1;
+  const container = document.getElementById('prob-list');
+  if(entradas.length === 0){
+    container.innerHTML = '<div style="font-size:12px;color:var(--t3);padding:8px 0">Nenhum atendimento hoje ainda.</div>';
+    return;
+  }
+  container.innerHTML = entradas.map(([cat, n]) => `
     <div class="cost-bar-row">
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;color:var(--t2);margin-bottom:4px">${p.label}</div>
-        <div class="cost-bar-wrap"><div class="cost-bar-fill" style="width:${p.pct}%"></div></div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:4px">${LABELS_CATEGORIA[cat] || cat}</div>
+        <div class="cost-bar-wrap"><div class="cost-bar-fill" style="width:${Math.round((n/max)*100)}%"></div></div>
       </div>
-      <div class="cost-bar-val">${p.n}x</div>
+      <div class="cost-bar-val">${n}x</div>
     </div>
   `).join('');
 }
 
-// CUSTOS
-function buildCostBars(){
-  const days = [
-    {d:'Seg', v:1.45},{d:'Ter', v:2.31},{d:'Qua', v:1.87},
-    {d:'Qui', v:2.14},{d:'Sex', v:1.92},{d:'Sáb', v:2.14},{d:'Dom', v:1.82}
-  ];
-  const max = Math.max(...days.map(d => d.v));
-  document.getElementById('cost-bars').innerHTML = days.map((d,i) => {
-    const isToday = i === days.length - 1;
+// CUSTOS — últimos 7 dias
+function buildCostBars(itens){
+  const dias = [];
+  for(let i = 6; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dias.push({ key: d.toDateString(), label: d.toLocaleDateString('pt-BR', {weekday:'short'}).replace('.', ''), v: 0 });
+  }
+  itens.forEach(item => {
+    const d = new Date(item.criado_em);
+    const dia = dias.find(x => x.key === d.toDateString());
+    if(dia) dia.v += parseFloat(item.custo_usd || 0) * COTACAO_USD_BRL;
+  });
+  const max = Math.max(...dias.map(d => d.v), 0.01);
+  document.getElementById('cost-bars').innerHTML = dias.map((d,i) => {
+    const isToday = i === dias.length - 1;
     return `<div class="cost-bar-row">
-      <div class="cost-bar-label">${d.d}</div>
+      <div class="cost-bar-label">${d.label}</div>
       <div class="cost-bar-wrap"><div class="cost-bar-fill${isToday?' today':''}" style="width:${Math.round((d.v/max)*100)}%"></div></div>
       <div class="cost-bar-val">R$${d.v.toFixed(2)}</div>
     </div>`;
@@ -864,18 +906,15 @@ document.getElementById('config-panel').addEventListener('click', function(e){
 });
 
 // INIT
-buildHourChart();
-buildProbList();
-buildCostBars();
+carregarMensagensSemana();
 // checkInstability(); // desativado - fase 2, dado ainda não é real
 carregarCasos();
 carregarKPIs();
 carregarAtividade();
 carregarStatusWhatsApp();
 
-// Atualizar gráfico de hora a cada minuto
-setInterval(buildHourChart, 60000);
-// Atualizar casos pendentes, KPIs, atividade e status a cada 20 segundos
+// Atualizar gráficos, casos pendentes, KPIs, atividade e status a cada 20 segundos
+setInterval(carregarMensagensSemana, 20000);
 setInterval(carregarCasos, 20000);
 setInterval(carregarKPIs, 20000);
 setInterval(carregarAtividade, 20000);
