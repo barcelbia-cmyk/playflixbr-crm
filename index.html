@@ -781,6 +781,27 @@ function buildCostBars(){
   }).join('');
 }
 
+// STATUS DA CONEXÃO DO WHATSAPP (real)
+async function carregarStatusWhatsApp(){
+  try {
+    const resp = await fetch(PROXY_BASE + '/webhook/status-conexao');
+    const data = await resp.json();
+    const info = data[0];
+    const alertEl = document.getElementById('alert');
+    const alertTxt = document.getElementById('alert-txt');
+
+    if(!info || info.status !== 'open'){
+      const desde = info ? tempoRelativo(info.atualizado_em) : 'algum tempo';
+      alertTxt.textContent = `⚠️ WhatsApp desconectado há ${desde}! O bot não está respondendo os clientes.`;
+      alertEl.classList.add('show');
+    } else {
+      alertEl.classList.remove('show');
+    }
+  } catch(err){
+    console.error('Erro ao checar status do WhatsApp:', err);
+  }
+}
+
 // STATUS DO SERVIDOR baseado em reclamações
 function checkInstability(){
   const urgentes = 2;
@@ -824,17 +845,19 @@ document.getElementById('config-panel').addEventListener('click', function(e){
 buildHourChart();
 buildProbList();
 buildCostBars();
-checkInstability();
+// checkInstability(); // desativado - fase 2, dado ainda não é real
 carregarCasos();
 carregarKPIs();
 carregarAtividade();
+carregarStatusWhatsApp();
 
 // Atualizar gráfico de hora a cada minuto
 setInterval(buildHourChart, 60000);
-// Atualizar casos pendentes, KPIs e atividade a cada 20 segundos
+// Atualizar casos pendentes, KPIs, atividade e status a cada 20 segundos
 setInterval(carregarCasos, 20000);
 setInterval(carregarKPIs, 20000);
 setInterval(carregarAtividade, 20000);
+setInterval(carregarStatusWhatsApp, 20000);
 </script>
 </body>
 </html>
