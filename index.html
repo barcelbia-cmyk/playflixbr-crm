@@ -246,42 +246,7 @@ body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sa
         <span id="att-count">3 casos</span>
       </div>
 
-      <div class="attention-item">
-        <span class="att-badge att-urg">🚨 urgente</span>
-        <div class="att-body">
-          <div class="att-name">Marcos Alves · +55 41 9 9999-0001</div>
-          <div class="att-desc">Cliente ameaçou estorno. Bot não conseguiu resolver problema de conexão na Samsung após 2 tentativas.</div>
-          <div class="att-actions">
-            <button class="att-btn primary" onclick="showToast('📱 Abrindo conversa no WhatsApp...')">💬 Responder</button>
-            <button class="att-btn" onclick="showToast('✅ Caso resolvido!')">✓ Resolver</button>
-            <button class="att-btn" onclick="showToast('🎁 7 dias adicionados!')">🎁 Cortesia</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="attention-item">
-        <span class="att-badge att-urg">🚨 urgente</span>
-        <div class="att-body">
-          <div class="att-name">Roberto Costa · +55 11 9 8888-1122</div>
-          <div class="att-desc">App não abre na Samsung. Bot pediu reinstalação mas cliente não conseguiu.</div>
-          <div class="att-actions">
-            <button class="att-btn primary" onclick="showToast('📱 Abrindo conversa...')">💬 Responder</button>
-            <button class="att-btn" onclick="showToast('✅ Caso resolvido!')">✓ Resolver</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="attention-item">
-        <span class="att-badge att-wait">⏳ dúvida da IA</span>
-        <div class="att-body">
-          <div class="att-name">Juliana Santos · +55 21 9 7777-3344</div>
-          <div class="att-desc">IA pergunta: "Cliente diz que aparece erro 403 no GSE. Como devo orientar?"</div>
-          <div class="att-actions">
-            <button class="att-btn primary" onclick="orientarIA()">🤖 Orientar IA</button>
-            <button class="att-btn" onclick="showToast('✅ Resolvido!')">✓ Resolver</button>
-          </div>
-        </div>
-      </div>
+      <div id="casos-container"></div>
 
       <div id="no-attention" style="display:none;text-align:center;padding:20px;color:var(--t3);font-size:12px">
         ✅ Nenhum caso pendente — bot está resolvendo tudo!
@@ -502,16 +467,14 @@ body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sa
   <!-- ROW 4: Orientar IA (modal inline) -->
   <div id="orientar-panel" style="display:none;margin-bottom:18px">
     <div class="card" style="border-color:rgba(240,201,64,.3);background:rgba(240,201,64,.04)">
-      <div class="card-title" style="color:var(--amber-t)">🤖 Orientar a IA — Juliana Santos</div>
+      <div class="card-title" style="color:var(--amber-t)">🤖 Orientar a IA — <span id="orientar-nome"></span></div>
       <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">
-        <strong style="color:var(--t)">Situação:</strong> Cliente com erro 403 no GSE Smart IPTV (iPhone). Bot não encontrou solução na base de dados.<br>
-        <strong style="color:var(--t)">Pergunta da IA:</strong> "Como devo orientar o cliente sobre o erro 403?"
+        <strong style="color:var(--t)">Situação:</strong> <span id="orientar-duvida"></span>
       </div>
       <div style="display:flex;gap:8px">
         <textarea id="ia-response" placeholder="Digite sua orientação para a IA continuar o atendimento..." style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:10px;color:var(--t);font-size:12px;font-family:inherit;resize:none;height:72px;outline:none"></textarea>
         <button onclick="enviarOrientacao()" style="background:var(--amber-bg);border:1px solid rgba(240,201,64,.3);border-radius:8px;padding:0 16px;color:var(--amber-t);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Enviar para IA</button>
       </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--t3)">💡 Sugestão: "Erro 403 geralmente é problema de servidor. Peça para trocar para http://goflix.online"</div>
     </div>
   </div>
 
@@ -647,19 +610,100 @@ function toggleMaintenance(el){
   }
 }
 
-// ORIENTAR IA
-function orientarIA(){
-  const panel = document.getElementById('orientar-panel');
-  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  if(panel.style.display === 'block') panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+// ============ CONEXÃO COM O BACKEND (n8n via Cloudflare Worker) ============
+const PROXY_BASE = 'https://odd-tree-358c.barcelbia.workers.dev/proxy';
+let casoAtualId = null; // guarda qual caso está aberto no painel de orientação
+
+// Busca os casos pendentes reais e desenha na tela
+async function carregarCasos(){
+  try {
+    const resp = await fetch(PROXY_BASE + '/webhook/listar-casos');
+    const casos = await resp.json();
+    const container = document.getElementById('casos-container');
+    const noAttention = document.getElementById('no-attention');
+    const countEl = document.getElementById('att-count');
+
+    countEl.textContent = casos.length + (casos.length === 1 ? ' caso' : ' casos');
+
+    if(casos.length === 0){
+      container.innerHTML = '';
+      noAttention.style.display = 'block';
+      return;
+    }
+    noAttention.style.display = 'none';
+
+    container.innerHTML = casos.map(c => `
+      <div class="attention-item">
+        <span class="att-badge att-wait">⏳ pendente</span>
+        <div class="att-body">
+          <div class="att-name">${escapeHtml(c.nome || 'Cliente')} · ${escapeHtml(c.numero)}</div>
+          <div class="att-desc">${escapeHtml(c.duvida_operador)}</div>
+          <div class="att-actions">
+            <button class="att-btn primary" onclick="orientarIA(${c.id}, '${escapeAttr(c.nome || 'Cliente')}', '${escapeAttr(c.duvida_operador)}')">🤖 Orientar IA</button>
+            <button class="att-btn" onclick="resolverCaso(${c.id})">✓ Resolver</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch(err){
+    console.error('Erro ao carregar casos:', err);
+  }
 }
 
-function enviarOrientacao(){
+// Evita que texto do banco quebre o HTML
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+function escapeAttr(str){
+  return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ORIENTAR IA
+function orientarIA(id, nome, duvida){
+  casoAtualId = id;
+  document.getElementById('orientar-nome').textContent = nome;
+  document.getElementById('orientar-duvida').textContent = duvida;
+  const panel = document.getElementById('orientar-panel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+async function enviarOrientacao(){
   const resp = document.getElementById('ia-response').value.trim();
-  if(!resp) return;
-  showToast('✅ Orientação enviada! IA vai continuar o atendimento.');
-  document.getElementById('orientar-panel').style.display = 'none';
-  document.getElementById('ia-response').value = '';
+  if(!resp || !casoAtualId) return;
+  try {
+    await fetch(PROXY_BASE + '/webhook/orientar-ia', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ id: casoAtualId, orientacao: resp })
+    });
+    showToast('✅ Orientação enviada! IA vai continuar o atendimento.');
+    document.getElementById('orientar-panel').style.display = 'none';
+    document.getElementById('ia-response').value = '';
+    casoAtualId = null;
+    carregarCasos(); // atualiza a lista (o caso sai de pendente)
+  } catch(err){
+    showToast('❌ Erro ao enviar. Tenta de novo.');
+    console.error(err);
+  }
+}
+
+// RESOLVER SEM ORIENTAR (fecha o caso direto)
+async function resolverCaso(id){
+  try {
+    await fetch(PROXY_BASE + '/webhook/orientar-ia', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ id: id, orientacao: 'Resolvido diretamente pelo operador.' })
+    });
+    showToast('✅ Caso resolvido!');
+    carregarCasos();
+  } catch(err){
+    showToast('❌ Erro ao resolver. Tenta de novo.');
+    console.error(err);
+  }
 }
 
 // GRÁFICO DE HORAS
@@ -757,9 +801,12 @@ buildHourChart();
 buildProbList();
 buildCostBars();
 checkInstability();
+carregarCasos();
 
 // Atualizar gráfico de hora a cada minuto
 setInterval(buildHourChart, 60000);
+// Atualizar casos pendentes a cada 20 segundos
+setInterval(carregarCasos, 20000);
 </script>
 </body>
 </html>
