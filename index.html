@@ -256,56 +256,7 @@ body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sa
     <!-- ATIVIDADE RECENTE -->
     <div class="card">
       <div class="card-title">Atividade recente</div>
-      <div class="feed">
-        <div class="feed-item">
-          <div class="feed-icon fi-green">✅</div>
-          <div class="feed-body">
-            <div class="feed-name">Patrícia Ferreira</div>
-            <div class="feed-desc">Instalação LG resolvida pelo bot</div>
-          </div>
-          <div class="feed-time">2min</div>
-        </div>
-        <div class="feed-item">
-          <div class="feed-icon fi-red">🚨</div>
-          <div class="feed-body">
-            <div class="feed-name">Marcos Alves</div>
-            <div class="feed-desc">Ameaçou estorno — escalado</div>
-          </div>
-          <div class="feed-time">5min</div>
-        </div>
-        <div class="feed-item">
-          <div class="feed-icon fi-green">✅</div>
-          <div class="feed-body">
-            <div class="feed-name">Larissa Oliveira</div>
-            <div class="feed-desc">Renovação 3 meses concluída</div>
-          </div>
-          <div class="feed-time">12min</div>
-        </div>
-        <div class="feed-item">
-          <div class="feed-icon fi-amber">🤖</div>
-          <div class="feed-body">
-            <div class="feed-name">Juliana Santos</div>
-            <div class="feed-desc">IA pediu orientação — erro 403</div>
-          </div>
-          <div class="feed-time">18min</div>
-        </div>
-        <div class="feed-item">
-          <div class="feed-icon fi-green">✅</div>
-          <div class="feed-body">
-            <div class="feed-name">Diego Martins</div>
-            <div class="feed-desc">Dúvida sobre múltiplas telas resolvida</div>
-          </div>
-          <div class="feed-time">25min</div>
-        </div>
-        <div class="feed-item">
-          <div class="feed-icon fi-blue">💳</div>
-          <div class="feed-body">
-            <div class="feed-name">Tiago Nascimento</div>
-            <div class="feed-desc">Renovação mensal realizada</div>
-          </div>
-          <div class="feed-time">31min</div>
-        </div>
-      </div>
+      <div class="feed" id="feed-container"></div>
     </div>
 
   </div>
@@ -638,6 +589,51 @@ async function carregarKPIs(){
   }
 }
 
+// Busca a atividade recente real e monta o feed
+function tempoRelativo(dataStr){
+  const diffMs = Date.now() - new Date(dataStr).getTime();
+  const min = Math.round(diffMs / 60000);
+  if(min < 1) return 'agora';
+  if(min < 60) return min + 'min';
+  const h = Math.round(min / 60);
+  if(h < 24) return h + 'h';
+  return Math.round(h / 24) + 'd';
+}
+
+function iconePorTipo(tipo){
+  if(tipo === 'bot') return {icon:'✅', cls:'fi-green'};
+  if(tipo === 'escalado') return {icon:'🚨', cls:'fi-red'};
+  return {icon:'🤖', cls:'fi-amber'}; // resolvido_operador
+}
+
+function descricaoPorTipo(item){
+  if(item.tipo === 'bot') return 'Categoria: ' + item.detalhe + ' — resolvido pelo bot';
+  if(item.tipo === 'escalado') return 'Escalado para você: ' + item.detalhe;
+  return 'Caso resolvido/orientado';
+}
+
+async function carregarAtividade(){
+  try {
+    const resp = await fetch(PROXY_BASE + '/webhook/atividade-recente');
+    const itens = await resp.json();
+    const container = document.getElementById('feed-container');
+
+    container.innerHTML = itens.map(item => {
+      const { icon, cls } = iconePorTipo(item.tipo);
+      return `<div class="feed-item">
+        <div class="feed-icon ${cls}">${icon}</div>
+        <div class="feed-body">
+          <div class="feed-name">${escapeHtml(item.nome)}</div>
+          <div class="feed-desc">${escapeHtml(descricaoPorTipo(item))}</div>
+        </div>
+        <div class="feed-time">${tempoRelativo(item.criado_em)}</div>
+      </div>`;
+    }).join('');
+  } catch(err){
+    console.error('Erro ao carregar atividade recente:', err);
+  }
+}
+
 // ============ CONEXÃO COM O BACKEND (n8n via Cloudflare Worker) ============
 const PROXY_BASE = 'https://odd-tree-358c.barcelbia.workers.dev/proxy';
 let casoAtualId = null; // guarda qual caso está aberto no painel de orientação
@@ -831,12 +827,14 @@ buildCostBars();
 checkInstability();
 carregarCasos();
 carregarKPIs();
+carregarAtividade();
 
 // Atualizar gráfico de hora a cada minuto
 setInterval(buildHourChart, 60000);
-// Atualizar casos pendentes e KPIs a cada 20 segundos
+// Atualizar casos pendentes, KPIs e atividade a cada 20 segundos
 setInterval(carregarCasos, 20000);
 setInterval(carregarKPIs, 20000);
+setInterval(carregarAtividade, 20000);
 </script>
 </body>
 </html>
