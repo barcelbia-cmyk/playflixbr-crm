@@ -212,6 +212,12 @@ body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sa
     <span class="close" onclick="document.getElementById('alert').classList.remove('show')">✕</span>
   </div>
 
+  <!-- ALERT ORÇAMENTO -->
+  <div class="alert-banner" id="budget-alert">
+    <span id="budget-alert-inner"></span>
+    <span class="close" onclick="document.getElementById('budget-alert').classList.remove('show')">✕</span>
+  </div>
+
   <!-- KPIs -->
   <div class="grid-4" style="margin-bottom:18px">
     <div class="kpi green">
@@ -584,6 +590,22 @@ async function carregarKPIs(){
     document.getElementById('kpi-resolvido').textContent = pctResolvido + '%';
     document.getElementById('kpi-resolvido-sub').textContent =
       (atendimentos - escalados) + ' de ' + atendimentos + ' sem intervenção';
+
+    // Alerta de orçamento mensal
+    const custoMesUsd = parseFloat(stats.custo_mes_usd || 0);
+    const orcamento = parseFloat(stats.orcamento_mensal || 0);
+    if(orcamento > 0){
+      const custoMesBrl = custoMesUsd * COTACAO_USD_BRL;
+      const pctOrcamento = (custoMesBrl / orcamento) * 100;
+      const budgetAlert = document.getElementById('budget-alert');
+      const budgetAlertInner = document.getElementById('budget-alert-inner');
+      if(pctOrcamento >= 80){
+        budgetAlertInner.textContent = `💰 Orçamento de IA: R$ ${custoMesBrl.toFixed(2)} de R$ ${orcamento.toFixed(2)} usados esse mês (${Math.round(pctOrcamento)}%)`;
+        budgetAlert.classList.add('show');
+      } else {
+        budgetAlert.classList.remove('show');
+      }
+    }
   } catch(err){
     console.error('Erro ao carregar KPIs:', err);
   }
