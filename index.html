@@ -552,18 +552,48 @@ function showToast(msg){
 }
 
 // MODO MANUTENÇÃO
-function toggleMaintenance(el){
+async function toggleMaintenance(el){
   const tog = document.getElementById('maint-tog');
   const sub = document.getElementById('maint-sub');
+  const novoEstado = !tog.classList.contains('on'); // estado que vai ficar depois do clique
+
+  // Atualiza a tela otimisticamente, antes mesmo da resposta do servidor
   tog.classList.toggle('on');
-  if(tog.classList.contains('on')){
+  if(novoEstado){
     sub.textContent = 'Ativado — bot respondendo com mensagem de manutenção';
     sub.style.color = 'var(--amber-t)';
-    showToast('⚙️ Modo manutenção ativado!');
   } else {
     sub.textContent = 'Desativado — bot respondendo normalmente';
     sub.style.color = 'var(--t3)';
-    showToast('✅ Bot voltou ao normal!');
+  }
+
+  try {
+    await fetch(PROXY_BASE + '/webhook/set-manutencao', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ ativo: novoEstado ? 'true' : 'false' })
+    });
+    showToast(novoEstado ? '⚙️ Modo manutenção ativado!' : '✅ Modo manutenção desativado!');
+  } catch(err){
+    showToast('❌ Erro ao salvar. Tenta de novo.');
+    console.error(err);
+    // desfaz a mudança visual se der erro
+    tog.classList.toggle('on');
+  }
+}
+
+// Aplica o estado real do modo manutenção na tela (chamado ao carregar a página)
+function aplicarEstadoManutencao(ativo){
+  const tog = document.getElementById('maint-tog');
+  const sub = document.getElementById('maint-sub');
+  if(ativo){
+    tog.classList.add('on');
+    sub.textContent = 'Ativado — bot respondendo com mensagem de manutenção';
+    sub.style.color = 'var(--amber-t)';
+  } else {
+    tog.classList.remove('on');
+    sub.textContent = 'Desativado — bot respondendo normalmente';
+    sub.style.color = 'var(--t3)';
   }
 }
 
@@ -590,6 +620,9 @@ async function carregarKPIs(){
     document.getElementById('kpi-resolvido').textContent = pctResolvido + '%';
     document.getElementById('kpi-resolvido-sub').textContent =
       (atendimentos - escalados) + ' de ' + atendimentos + ' sem intervenção';
+
+    // Sincroniza o toggle de manutenção com o estado real do banco
+    aplicarEstadoManutencao(stats.modo_manutencao === 'true');
 
     // Alerta de orçamento mensal
     const custoMesUsd = parseFloat(stats.custo_mes_usd || 0);
