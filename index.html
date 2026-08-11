@@ -508,6 +508,18 @@ body{background:var(--bg);color:var(--t);font-family:-apple-system,'Segoe UI',sa
             <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps Fire Stick via Downloader (nome:código)</label>
             <input id="cfg-firestick" value="MegaFlix V7:3764377, Uni Tv:9387398, Fusion Ibo 4K:7207536, GS Tv:7532402" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
           </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps Hisense (VIDAA)</label>
+            <input id="cfg-hisense" value="" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps Roku</label>
+            <input id="cfg-roku" value="" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:4px">Apps Android TV / Google TV</label>
+            <input id="cfg-androidtv" value="" style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none">
+          </div>
         </div>
       </div>
 
@@ -930,22 +942,72 @@ function checkInstability(){
 }
 
 
-// CONFIGURAÇÃO
-function toggleConfig(){
+// CONFIGURAÇÃO — mapeia campo do formulário para a chave no banco
+const CONFIG_FIELD_MAP = {
+  'cfg-srv1': 'servidor_1',
+  'cfg-srv2': 'servidor_2',
+  'cfg-codigo': 'codigo_apps',
+  'cfg-samsung': 'apps_samsung',
+  'cfg-lg': 'apps_lg',
+  'cfg-android': 'apps_android_celular',
+  'cfg-iphone': 'apps_iphone',
+  'cfg-firestick': 'apps_firestick',
+  'cfg-hisense': 'apps_hisense',
+  'cfg-roku': 'apps_roku',
+  'cfg-androidtv': 'apps_android_tv',
+};
+
+async function toggleConfig(){
   const p = document.getElementById('config-panel');
-  p.style.display = p.style.display === 'none' || p.style.display === '' ? 'flex' : 'none';
+  const abrindo = p.style.display === 'none' || p.style.display === '';
+  p.style.display = abrindo ? 'flex' : 'none';
+  if(abrindo) await carregarConfig();
 }
+
+async function carregarConfig(){
+  try {
+    const resp = await fetch(PROXY_BASE + '/webhook/listar-config');
+    const linhas = await resp.json();
+    const porChave = {};
+    linhas.forEach(l => porChave[l.chave] = l.valor);
+
+    for(const [fieldId, chave] of Object.entries(CONFIG_FIELD_MAP)){
+      const el = document.getElementById(fieldId);
+      if(el && porChave[chave] !== undefined) el.value = porChave[chave];
+    }
+  } catch(err){
+    console.error('Erro ao carregar configuração:', err);
+    showToast('❌ Erro ao carregar configuração.');
+  }
+}
+
 function closeConfig(){
   document.getElementById('config-panel').style.display = 'none';
 }
-function salvarConfig(){
-  const now = new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  document.getElementById('cfg-updated').textContent = now;
-  // Atualiza status do servidor no topbar
-  const nomePainel = document.getElementById('cfg-nome-painel').value;
-  document.getElementById('srv-txt').textContent = nomePainel + ' OK';
-  closeConfig();
-  showToast('✅ Configuração salva! IA já usa as novas informações.');
+
+async function salvarConfig(){
+  const payload = {};
+  for(const [fieldId, chave] of Object.entries(CONFIG_FIELD_MAP)){
+    const el = document.getElementById(fieldId);
+    if(el) payload[chave] = el.value;
+  }
+
+  try {
+    await fetch(PROXY_BASE + '/webhook/salvar-config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const now = new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('cfg-updated').textContent = now;
+    const nomePainel = document.getElementById('cfg-nome-painel').value;
+    document.getElementById('srv-txt').textContent = nomePainel + ' OK';
+    closeConfig();
+    showToast('✅ Configuração salva! IA já usa as novas informações.');
+  } catch(err){
+    console.error('Erro ao salvar configuração:', err);
+    showToast('❌ Erro ao salvar. Tenta de novo.');
+  }
 }
 // Fechar ao clicar fora
 document.getElementById('config-panel').addEventListener('click', function(e){
